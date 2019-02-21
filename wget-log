@@ -1,0 +1,9 @@
+--2019-02-19 07:58:17--  https://www.shutterstock.com/search?searchterm=car+bumper
+Resolving www.shutterstock.com (www.shutterstock.com)... 23.35.182.16
+Connecting to www.shutterstock.com (www.shutterstock.com)|23.35.182.16|:443... connected.
+HTTP request sent, awaiting response... 200 OK
+Length: unspecified [text/html]
+/images/bumper/www.shutterstock.com: No such file or directory
+/images/bumper/www.shutterstock.com/search?searchterm=car+bumper.tmp: Bad file descriptor
+
+Cannot write to ‘/images/bumper/www.shutterstock.com/search?searchterm=car+bumper.tmp’ (Bad file descriptor).
