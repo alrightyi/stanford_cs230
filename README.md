@@ -22,7 +22,7 @@ pip install -r requirements.txt
 3) python yolo.py <image_file_name> from "images/" folder
 
 
-Experiemented by changing number of classes, anchors in 
+Experiemented by changing number of classes, anchors in "model_data".
 
 
 Datasets for Bumpers, Stickers are in "images/".
