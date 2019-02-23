@@ -14,8 +14,11 @@ How to run:
 1) git clone https://github.com/alrightyi/stanford_cs230.git
 2) 
 virtualenv -p python3 .env
+
 source .env/bin/activate
+
 pip install -r requirements.txt
+
 3) python yolo.py <image_file_name> from "images/" folder
 
 
