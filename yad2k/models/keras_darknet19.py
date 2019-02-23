@@ -69,4 +69,3 @@ def darknet19(inputs):
     body = darknet_body()(inputs)
     logits = DarknetConv2D(1000, (1, 1), activation='softmax')(body)
     return Model(inputs, logits)
-

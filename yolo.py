@@ -1,19 +1,20 @@
 """ Main Training for Car detection """
 import argparse
 import os
+import sys
 #import matplotlib.pyplot as plt
 #from matplotlib.pyplot import imshow
 import scipy.io
 import scipy.misc
 import numpy as np
 import pandas as pd
-import PIL
+from PIL import Image
 import tensorflow as tf
 from keras import backend as K
 from keras.layers import Input, Lambda, Conv2D
 from keras.models import load_model, Model
 from yolo_utils import read_classes, read_anchors, generate_colors, preprocess_image, draw_boxes, scale_boxes
-from yad2k.models.keras_yolo import yolo_head, yolo_boxes_to_corners, preprocess_true_boxes, yolo_loss, yolo_body
+from yad2k.models.keras_yolo import yolo, yolo_head, yolo_boxes_to_corners, preprocess_true_boxes, yolo_loss, yolo_body
 
 #%matplotlib inline
 
@@ -141,7 +142,7 @@ def yolo_eval(yolo_outputs, image_shape = (720., 1280.), max_boxes=10, score_thr
     classes -- tensor of shape (None,), predicted class for each box
     """
     # Retrieve outputs of the YOLO model (1 line)
-    box_confidence, box_xy, box_wh, box_class_probs = yolo_outputs
+    box_xy, box_wh, box_confidence, box_class_probs = yolo_outputs
 
     # Convert boxes to be ready for filtering functions
     boxes = yolo_boxes_to_corners(box_xy, box_wh)
@@ -195,17 +196,25 @@ def predict(sess, image_file):
     return out_scores, out_boxes, out_classes
 
 if __name__ == '__main__':
+
+    # get image name from command line arg
+    image_file = sys.argv[1]
+    if image_file == None:
+        print("Image file name must be provided.")
+        sys.exit(0)
+
+    with Image.open("images/" + image_file) as img:
+        image_shape = (float(img.size[1]), float(img.size[0]))
+        print(image_shape)
+
     sess = K.get_session()
     class_names = read_classes("model_data/coco_classes.txt")
     print(class_names)
     anchors = read_anchors("model_data/yolo_anchors.txt")
-    image_shape = (720., 1280.)
+    #image_shape = (175., 287.)
     yolo_model = load_model("model_data/yolo.h5")
     yolo_model.summary()
+    #yolo_outputs = yolo(yolo_model.input, anchors, len(class_names))
     yolo_outputs = yolo_head(yolo_model.output, anchors, len(class_names))
     scores, boxes, classes = yolo_eval(yolo_outputs, image_shape)
-    out_scores, out_boxes, out_classes = predict(sess, "test.jpg")
-
-
-
-
+    out_scores, out_boxes, out_classes = predict(sess, image_file)
