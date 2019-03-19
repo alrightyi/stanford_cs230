@@ -388,6 +388,7 @@ def preprocess_true_boxes(true_boxes, anchors, image_size):
     matching_true_boxes = np.zeros(
         (conv_height, conv_width, num_anchors, num_box_params),
         dtype=np.float32)
+    print("conv_height: ",conv_height, ", conv_width: ",conv_width)
 
     for box in true_boxes:
         # scale box to convolutional feature spatial dimensions
@@ -396,6 +397,7 @@ def preprocess_true_boxes(true_boxes, anchors, image_size):
             [conv_width, conv_height, conv_width, conv_height])
         i = np.floor(box[1]).astype('int')
         j = np.floor(box[0]).astype('int')
+        #print("box: ", box, " i,j: ", i, ":", j)
         best_iou = 0
         best_anchor = 0
         for k, anchor in enumerate(anchors):
@@ -417,6 +419,7 @@ def preprocess_true_boxes(true_boxes, anchors, image_size):
                 best_anchor = k
 
         if best_iou > 0:
+            print(i, j, best_anchor)
             detectors_mask[i, j, best_anchor] = 1
             adjusted_box = np.array(
                 [

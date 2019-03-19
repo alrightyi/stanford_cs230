@@ -13,8 +13,10 @@ import tensorflow as tf
 from keras import backend as K
 from keras.layers import Input, Lambda, Conv2D
 from keras.models import load_model, Model
-from yolo_utils import read_classes, read_anchors, generate_colors, preprocess_image, draw_boxes, scale_boxes
-from yad2k.models.keras_yolo import yolo, yolo_head, yolo_boxes_to_corners, preprocess_true_boxes, yolo_loss, yolo_body
+from . import yolo_utils
+from . import yad2k
+from .yolo_utils import read_classes, read_anchors, generate_colors, preprocess_image, draw_boxes, scale_boxes
+from .yad2k.models.keras_yolo import yolo, yolo_head, yolo_boxes_to_corners, preprocess_true_boxes, yolo_loss, yolo_body
 
 #%matplotlib inline
 
@@ -54,7 +56,7 @@ def yolo_filter_boxes(box_confidence, boxes, box_class_probs, threshold = .6):
     boxes = tf.boolean_mask(boxes, filtering_mask)
     classes = tf.boolean_mask(box_classes, filtering_mask)
     ### END CODE HERE ###
-    return scores, boxes, classes
+    return boxes, scores, classes
 
 # GRADED FUNCTION: iou
 
@@ -119,7 +121,7 @@ def yolo_non_max_suppression(scores, boxes, classes, max_boxes = 10, iou_thresho
     boxes = K.gather(boxes,nms_indices)
     classes = K.gather(classes,nms_indices)
     ### END CODE HERE ###
-    return scores, boxes, classes
+    return boxes, scores, classes
 
 # GRADED FUNCTION: yolo_eval
 
@@ -148,15 +150,15 @@ def yolo_eval(yolo_outputs, image_shape = (720., 1280.), max_boxes=10, score_thr
     boxes = yolo_boxes_to_corners(box_xy, box_wh)
 
     # Use one of the functions you've implemented to perform Score-filtering with a threshold of score_threshold (1 line)
-    scores, boxes, classes = yolo_filter_boxes(box_confidence, boxes, box_class_probs, score_threshold)
+    boxes, scores, classes = yolo_filter_boxes(box_confidence, boxes, box_class_probs, score_threshold)
     # Scale boxes back to original image shape.
     boxes = scale_boxes(boxes, image_shape)
 
     # Use one of the functions you've implemented to perform Non-max suppression with a threshold of iou_threshold (1 line)
-    scores, boxes, classes = yolo_non_max_suppression(scores, boxes, classes, max_boxes, iou_threshold)
-    return scores, boxes, classes
+    boxes, scores, classes = yolo_non_max_suppression(scores, boxes, classes, max_boxes, iou_threshold)
+    return boxes, scores, classes
 
-def predict(sess, image_file):
+def predict(sess, image_file, scores, boxes, classes, yolo_model, class_names):
     """
     Runs the graph stored in "sess" to predict boxes for "image_file". Prints and plots the preditions.
 
@@ -173,12 +175,12 @@ def predict(sess, image_file):
     """
 
     # Preprocess your image
-    image, image_data = preprocess_image("images/" + image_file, model_image_size = (608, 608))
+    image, image_data = preprocess_image(image_file, model_image_size = (608, 608))
 
     # Run the session with the correct tensors and choose the correct placeholders in the feed_dict.
     # You'll need to use feed_dict={yolo_model.input: ... , K.learning_phase(): 0})
     ### START CODE HERE ### ( 1 line)
-    out_scores, out_boxes, out_classes = sess.run([scores,boxes,classes],feed_dict={yolo_model.input:image_data,K.learning_phase(): 0})
+    out_boxes, out_scores, out_classes = sess.run([boxes,scores,classes],feed_dict={yolo_model.input:image_data,K.learning_phase(): 0})
     ### END CODE HERE ###
 
     # Print predictions info
@@ -193,7 +195,7 @@ def predict(sess, image_file):
     output_image = scipy.misc.imread(os.path.join("out", image_file))
     #imshow(output_image)
 
-    return out_scores, out_boxes, out_classes
+    return out_boxes, out_scores, out_classes
 
 if __name__ == '__main__':
 
@@ -203,7 +205,7 @@ if __name__ == '__main__':
         print("Image file name must be provided.")
         sys.exit(0)
 
-    with Image.open("images/" + image_file) as img:
+    with Image.open(image_file) as img:
         image_shape = (float(img.size[1]), float(img.size[0]))
         print(image_shape)
 
@@ -217,4 +219,4 @@ if __name__ == '__main__':
     #yolo_outputs = yolo(yolo_model.input, anchors, len(class_names))
     yolo_outputs = yolo_head(yolo_model.output, anchors, len(class_names))
     scores, boxes, classes = yolo_eval(yolo_outputs, image_shape)
-    out_scores, out_boxes, out_classes = predict(sess, image_file)
+    out_scores, out_boxes, out_classes = predict(sess, image_file, scores, boxes, classes, yolo_model, class_names)

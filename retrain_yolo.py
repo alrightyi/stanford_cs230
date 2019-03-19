@@ -9,11 +9,13 @@ import os
 import numpy as np
 import PIL
 import tensorflow as tf
+import urllib
 from keras import backend as K
 from keras.layers import Input, Lambda, Conv2D
 from keras.models import load_model, Model
 from keras.callbacks import TensorBoard, ModelCheckpoint, EarlyStopping
-
+from keras.preprocessing.image import load_img
+#from . import yad2k
 from yad2k.models.keras_yolo import (preprocess_true_boxes, yolo_body,
                                      yolo_eval, yolo_head, yolo_loss)
 from yad2k.utils.draw_boxes import draw_boxes
@@ -53,10 +55,9 @@ def _main(args):
     class_names = get_classes(classes_path)
     anchors = get_anchors(anchors_path)
 
-    data = np.load(data_path) # custom data saved as a numpy file.
+    data = np.load(data_path).item() # custom data saved as a numpy file.
     #  has 2 arrays: an object array 'boxes' (variable length of boxes in each image)
     #  and an array of images 'images'
-
     image_data, boxes = process_data(data['images'], data['boxes'])
 
     anchors = YOLO_ANCHORS
@@ -104,9 +105,9 @@ def get_anchors(anchors_path):
 
 def process_data(images, boxes=None):
     '''processes the data'''
-    images = [PIL.Image.fromarray(i) for i in images]
-    orig_size = np.array([images[0].width, images[0].height])
-    orig_size = np.expand_dims(orig_size, axis=0)
+    images = [load_img(urllib.request.urlopen(i)) for i in images]
+    orig_sizes = [np.array([images[i].width, images[i].height]) for i,img in enumerate(images)]
+    orig_sizes = [np.expand_dims(orig_sizes[i], axis=0) for i,img in enumerate(images)]
 
     # Image preprocessing.
     processed_images = [i.resize((416, 416), PIL.Image.BICUBIC) for i in images]
@@ -124,10 +125,14 @@ def process_data(images, boxes=None):
         # Get box parameters as x_center, y_center, box_width, box_height, class.
         boxes_xy = [0.5 * (box[:, 3:5] + box[:, 1:3]) for box in boxes]
         boxes_wh = [box[:, 3:5] - box[:, 1:3] for box in boxes]
-        boxes_xy = [boxxy / orig_size for boxxy in boxes_xy]
-        boxes_wh = [boxwh / orig_size for boxwh in boxes_wh]
+        boxes_xy = [boxxy / orig_sizes[i] for i,boxxy in enumerate(boxes_xy)]
+        boxes_wh = [boxwh / orig_sizes[i] for i,boxwh in enumerate(boxes_wh)]
         boxes = [np.concatenate((boxes_xy[i], boxes_wh[i], box[:, 0:1]), axis=1) for i, box in enumerate(boxes)]
 
+        #print(boxes)
+        print("boxes len: ",len(boxes))
+        print("orig sizes len: ",len(orig_sizes))
+        print("images len: ",(images))
         # find the max number of boxes
         max_boxes = 0
         for boxz in boxes:
@@ -253,6 +258,7 @@ def train(model, class_names, anchors, image_data, boxes, detectors_mask, matchi
               validation_split=validation_split,
               batch_size=32,
               epochs=5,
+              #epochs=1,
               callbacks=[logging])
     model.save_weights('trained_stage_1.h5')
 
@@ -271,6 +277,7 @@ def train(model, class_names, anchors, image_data, boxes, detectors_mask, matchi
               validation_split=0.1,
               batch_size=8,
               epochs=30,
+              #epochs=1,
               callbacks=[logging])
 
     model.save_weights('trained_stage_2.h5')
@@ -280,6 +287,7 @@ def train(model, class_names, anchors, image_data, boxes, detectors_mask, matchi
               validation_split=0.1,
               batch_size=8,
               epochs=30,
+              #epochs=1,
               callbacks=[logging, checkpoint, early_stopping])
 
     model.save_weights('trained_stage_3.h5')
@@ -308,7 +316,7 @@ def draw(model_body, class_names, anchors, image_data, image_set='val',
     yolo_outputs = yolo_head(model_body.output, anchors, len(class_names))
     input_image_shape = K.placeholder(shape=(2, ))
     boxes, scores, classes = yolo_eval(
-        yolo_outputs, input_image_shape, score_threshold=0.07, iou_threshold=0)
+        yolo_outputs, input_image_shape, score_threshold=0.07, iou_threshold=0.0)
 
     # Run prediction on overfit image.
     sess = K.get_session()  # TODO: Remove dependence on Tensorflow session.
